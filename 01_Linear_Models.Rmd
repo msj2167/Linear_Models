@@ -1,5 +1,5 @@
 ---
-title: "01.Linear_Models"
+title: "01_Linear_Models"
 output: github_document
 date: "2026-11-12"
 ---
@@ -65,3 +65,132 @@ broom::tidy(fit) |>
   knitr::kable(digits = 3) 
 ```
 
+## Diagnostics 
+
+diagnostics is basically "looking at the residuals" 
+
+```{r}
+modelr::spread_residuals(nyc_airbnb, fit) 
+```
+
+so we can look at residuals 
+
+```{r}
+nyc_airbnb |>
+  modelr::add_residuals(fit) |>
+  ggplot(aes(x = stars, y = resid)) +
+  geom_point()
+
+nyc_airbnb |>
+  modelr::add_residuals(fit) |>
+  ggplot(aes(x = stars, y = resid)) +
+  geom_violin()
+```
+
+## Hypothesis testing 
+
+```{r}
+broom::tidy(fit) |>
+  mutate(term = str_replace(term, "borough", "Borough: ")) |>
+  knitr::kable(digits = 3)
+```
+
+try testing nested models 
+
+```{r}
+fit_null = lm(price ~ stars, data = nyc_airbnb)
+fit_alt = lm(price ~ stars + borough, data = nyc_airbnb) 
+
+anova(fit_null, fit_alt)
+```
+## Nesting data
+
+different from fitting nested models
+nest data and then fit models to each thing seperately 
+
+try a complicated model 
+
+```{r}
+nyc_airbnb |>
+  lm(price ~ stars * borough + room_type * borough, data = _) |>
+broom::tidy() |>
+knitr::kable(digits = 3) 
+```
+This is a hassle, instead we could do 
+
+to find out whats happening in manhatan 
+
+```{r}
+nyc_airbnb |>
+  filter(borough == "Manhattan") |>
+  lm(price ~ stars + room_type, data = _) |>
+  broom::tidy()
+```
+to find out whats happening in Bronx
+
+```{r}
+nyc_airbnb |>
+  filter(borough == "Bronx") |>
+  lm(price ~ stars + room_type, data = _) |>
+  broom::tidy()
+```
+
+lets fix this with iteration as we want to fit the same model to different boroughs 
+
+```{r}
+airbnb_lm = function(data) {
+    
+  lm(price ~ stars + room_type, data = data)
+  
+}
+```
+
+
+```{r}
+nyc_airbnb |>
+  nest(datasets = -borough) |>
+  mutate(
+  fits = map(datasets, airbnb_lm),
+  results = map(fits, broom::tidy)
+) |>
+  select(-datasets, -fits) |>
+  unnest(results) |>
+  select(borough, term, estimate) |>
+  pivot_wider(
+    names_from = term, 
+    values_from = estimate
+  )
+```
+creating the function inside of the code instead of before like previously in this markdown
+
+```{r}
+nyc_airbnb |>
+  nest(datasets = -borough) |>
+  mutate(
+  fits = map(datasets, \(data) lm(price ~ stars, data = data)),
+  results = map(fits, broom::tidy)
+) |>
+  select(-datasets, -fits) |>
+  unnest(results) |>
+  select(borough, term, estimate) |>
+  pivot_wider(
+    names_from = term, 
+    values_from = estimate
+  )
+```
+```{r}
+nyc_airbnb |>
+  filter(borough == "Manhattan") |>
+  nest(datasets = -neighbourhood) |>
+  mutate(
+    fits = map(datasets, \(df) lm(price ~ stars + room_type, data = df)),
+    results = map(fits, broom::tidy)
+  ) |>
+  select(neighbourhood, results) |>
+  unnest(results) |>
+  filter(term == "room_typePrivate room") |>
+  ggplot(aes(x = neighbourhood, y = estimate)) +
+  geom_point() + 
+  theme(axis.text.x = element_text(angle = 80, hjust =1))
+```
+## 

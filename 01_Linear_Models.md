@@ -1,4 +1,4 @@
-01.Linear_Models
+01_Linear_Models
 ================
 2026-11-12
 
@@ -21131,3 +21131,237 @@ broom::tidy(fit) |>
 | Borough:Brooklyn  |   40.500 |   0.000 |
 | Borough:Manhattan |   90.254 |   0.000 |
 | Borough:Queens    |   13.206 |   0.145 |
+
+## Diagnostics
+
+diagnostics is basically “looking at the residuals”
+
+``` r
+modelr::spread_residuals(nyc_airbnb, fit) 
+```
+
+    ## # A tibble: 40,492 × 6
+    ##    price stars borough neighbourhood room_type          fit
+    ##    <dbl> <dbl> <chr>   <chr>         <chr>            <dbl>
+    ##  1    99   5   Bronx   City Island   Private room      9.47
+    ##  2   200  NA   Bronx   City Island   Private room     NA   
+    ##  3   300  NA   Bronx   City Island   Entire home/apt  NA   
+    ##  4   125   5   Bronx   City Island   Entire home/apt  35.5 
+    ##  5    69   5   Bronx   City Island   Private room    -20.5 
+    ##  6   125   5   Bronx   City Island   Entire home/apt  35.5 
+    ##  7    85   5   Bronx   City Island   Entire home/apt  -4.53
+    ##  8    39   4.5 Bronx   Allerton      Private room    -34.5 
+    ##  9    95   5   Bronx   Allerton      Entire home/apt   5.47
+    ## 10   125   4.5 Bronx   Allerton      Entire home/apt  51.5 
+    ## # ℹ 40,482 more rows
+
+so we can look at residuals
+
+``` r
+nyc_airbnb |>
+  modelr::add_residuals(fit) |>
+  ggplot(aes(x = stars, y = resid)) +
+  geom_point()
+```
+
+    ## Warning: Removed 9962 rows containing missing values or values outside the scale range
+    ## (`geom_point()`).
+
+![](01_Linear_Models_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+
+``` r
+nyc_airbnb |>
+  modelr::add_residuals(fit) |>
+  ggplot(aes(x = stars, y = resid)) +
+  geom_violin()
+```
+
+    ## Warning: Removed 9962 rows containing non-finite outside the scale range
+    ## (`stat_ydensity()`).
+
+![](01_Linear_Models_files/figure-gfm/unnamed-chunk-8-2.png)<!-- -->
+
+## Hypothesis testing
+
+``` r
+broom::tidy(fit) |>
+  mutate(term = str_replace(term, "borough", "Borough: ")) |>
+  knitr::kable(digits = 3)
+```
+
+| term               | estimate | std.error | statistic | p.value |
+|:-------------------|---------:|----------:|----------:|--------:|
+| (Intercept)        |  -70.414 |    14.021 |    -5.022 |   0.000 |
+| stars              |   31.990 |     2.527 |    12.657 |   0.000 |
+| Borough: Brooklyn  |   40.500 |     8.559 |     4.732 |   0.000 |
+| Borough: Manhattan |   90.254 |     8.567 |    10.534 |   0.000 |
+| Borough: Queens    |   13.206 |     9.065 |     1.457 |   0.145 |
+
+try testing nested models
+
+``` r
+fit_null = lm(price ~ stars, data = nyc_airbnb)
+fit_alt = lm(price ~ stars + borough, data = nyc_airbnb) 
+
+anova(fit_null, fit_alt)
+```
+
+    ## Analysis of Variance Table
+    ## 
+    ## Model 1: price ~ stars
+    ## Model 2: price ~ stars + borough
+    ##   Res.Df        RSS Df Sum of Sq      F    Pr(>F)    
+    ## 1  30528 1030861841                                  
+    ## 2  30525 1005601724  3  25260117 255.59 < 2.2e-16 ***
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+## Nesting data
+
+different from fitting nested models nest data and then fit models to
+each thing seperately
+
+try a complicated model
+
+``` r
+nyc_airbnb |>
+  lm(price ~ stars * borough + room_type * borough, data = _) |>
+broom::tidy() |>
+knitr::kable(digits = 3) 
+```
+
+| term                                   | estimate | std.error | statistic | p.value |
+|:---------------------------------------|---------:|----------:|----------:|--------:|
+| (Intercept)                            |   90.067 |    75.406 |     1.194 |   0.232 |
+| stars                                  |    4.446 |    16.633 |     0.267 |   0.789 |
+| boroughBrooklyn                        |  -20.439 |    77.117 |    -0.265 |   0.791 |
+| boroughManhattan                       |    5.627 |    77.808 |     0.072 |   0.942 |
+| boroughQueens                          |    1.509 |    83.501 |     0.018 |   0.986 |
+| room_typePrivate room                  |  -52.915 |    17.751 |    -2.981 |   0.003 |
+| room_typeShared room                   |  -70.547 |    41.551 |    -1.698 |   0.090 |
+| stars:boroughBrooklyn                  |   16.525 |    16.982 |     0.973 |   0.331 |
+| stars:boroughManhattan                 |   22.664 |    17.099 |     1.325 |   0.185 |
+| stars:boroughQueens                    |    5.208 |    18.272 |     0.285 |   0.776 |
+| boroughBrooklyn:room_typePrivate room  |  -39.308 |    18.024 |    -2.181 |   0.029 |
+| boroughManhattan:room_typePrivate room |  -71.273 |    18.002 |    -3.959 |   0.000 |
+| boroughQueens:room_typePrivate room    |  -16.341 |    19.020 |    -0.859 |   0.390 |
+| boroughBrooklyn:room_typeShared room   |  -35.292 |    42.942 |    -0.822 |   0.411 |
+| boroughManhattan:room_typeShared room  |  -83.089 |    42.451 |    -1.957 |   0.050 |
+| boroughQueens:room_typeShared room     |  -24.427 |    44.399 |    -0.550 |   0.582 |
+
+This is a hassle, instead we could do
+
+to find out whats happening in manhatan
+
+``` r
+nyc_airbnb |>
+  filter(borough == "Manhattan") |>
+  lm(price ~ stars + room_type, data = _) |>
+  broom::tidy()
+```
+
+    ## # A tibble: 4 × 5
+    ##   term                  estimate std.error statistic   p.value
+    ##   <chr>                    <dbl>     <dbl>     <dbl>     <dbl>
+    ## 1 (Intercept)               95.7     22.2       4.31 1.62e-  5
+    ## 2 stars                     27.1      4.59      5.91 3.45e-  9
+    ## 3 room_typePrivate room   -124.       3.46    -35.8  9.40e-270
+    ## 4 room_typeShared room    -154.      10.1     -15.3  2.47e- 52
+
+to find out whats happening in Bronx
+
+``` r
+nyc_airbnb |>
+  filter(borough == "Bronx") |>
+  lm(price ~ stars + room_type, data = _) |>
+  broom::tidy()
+```
+
+    ## # A tibble: 4 × 5
+    ##   term                  estimate std.error statistic  p.value
+    ##   <chr>                    <dbl>     <dbl>     <dbl>    <dbl>
+    ## 1 (Intercept)              90.1      15.2       5.94 5.73e- 9
+    ## 2 stars                     4.45      3.35      1.33 1.85e- 1
+    ## 3 room_typePrivate room   -52.9       3.57    -14.8  6.21e-41
+    ## 4 room_typeShared room    -70.5       8.36     -8.44 4.16e-16
+
+lets fix this with iteration as we want to fit the same model to
+different boroughs
+
+``` r
+airbnb_lm = function(data) {
+    
+  lm(price ~ stars + room_type, data = data)
+  
+}
+```
+
+``` r
+nyc_airbnb |>
+  nest(datasets = -borough) |>
+  mutate(
+  fits = map(datasets, airbnb_lm),
+  results = map(fits, broom::tidy)
+) |>
+  select(-datasets, -fits) |>
+  unnest(results) |>
+  select(borough, term, estimate) |>
+  pivot_wider(
+    names_from = term, 
+    values_from = estimate
+  )
+```
+
+    ## # A tibble: 4 × 5
+    ##   borough   `(Intercept)` stars `room_typePrivate room` `room_typeShared room`
+    ##   <chr>             <dbl> <dbl>                   <dbl>                  <dbl>
+    ## 1 Bronx              90.1  4.45                   -52.9                  -70.5
+    ## 2 Queens             91.6  9.65                   -69.3                  -95.0
+    ## 3 Brooklyn           69.6 21.0                    -92.2                 -106. 
+    ## 4 Manhattan          95.7 27.1                   -124.                  -154.
+
+creating the function inside of the code instead of before like
+previously in this markdown
+
+``` r
+nyc_airbnb |>
+  nest(datasets = -borough) |>
+  mutate(
+  fits = map(datasets, \(data) lm(price ~ stars, data = data)),
+  results = map(fits, broom::tidy)
+) |>
+  select(-datasets, -fits) |>
+  unnest(results) |>
+  select(borough, term, estimate) |>
+  pivot_wider(
+    names_from = term, 
+    values_from = estimate
+  )
+```
+
+    ## # A tibble: 4 × 3
+    ##   borough   `(Intercept)` stars
+    ##   <chr>             <dbl> <dbl>
+    ## 1 Bronx              49.9  4.91
+    ## 2 Queens             18.1 15.8 
+    ## 3 Brooklyn          -11.3 28.0 
+    ## 4 Manhattan         -34.3 43.3
+
+``` r
+nyc_airbnb |>
+  filter(borough == "Manhattan") |>
+  nest(datasets = -neighbourhood) |>
+  mutate(
+    fits = map(datasets, \(df) lm(price ~ stars + room_type, data = df)),
+    results = map(fits, broom::tidy)
+  ) |>
+  select(neighbourhood, results) |>
+  unnest(results) |>
+  filter(term == "room_typePrivate room") |>
+  ggplot(aes(x = neighbourhood, y = estimate)) +
+  geom_point() + 
+  theme(axis.text.x = element_text(angle = 80, hjust =1))
+```
+
+![](01_Linear_Models_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+\##
