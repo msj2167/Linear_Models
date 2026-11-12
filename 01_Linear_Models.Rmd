@@ -1,0 +1,67 @@
+---
+title: "01.Linear_Models"
+output: github_document
+date: "2026-11-12"
+---
+
+```{r}
+library(tidyverse)
+library(p8105.datasets)
+```
+
+```{r}
+nyc_airbnb = 
+  nyc_airbnb |>
+  mutate(
+    stars = review_scores_location / 2
+  ) |>
+  rename(
+    borough = neighbourhood_group
+  ) |>
+  filter(
+    borough != "Staten Island"
+  ) |>
+  select(price, stars, borough, neighbourhood, room_type) 
+
+nyc_airbnb
+```
+```{r}
+fit = lm(price ~ stars + borough, data = nyc_airbnb)
+```
+
+```{r}
+fit 
+summary(fit) 
+coef(fit)
+fitted.values(fit)
+resid(fit) 
+
+names(fit)
+names(summary(fit))
+```
+
+most of this output is bad, but sometimes its okay 
+
+```{r}
+broom::tidy(fit) |>
+select(-std.error) |>
+  knitr::kable(digits = 3)
+
+broom::glance(fit)
+```
+
+change reference category
+
+```{r}
+nyc_airbnb |>
+  mutate(
+    borough = fct_infreq(borough)
+  ) |>
+  lm(price ~ stars + borough, data = _)
+
+broom::tidy(fit) |>
+  select(-std.error, -statistic) |>
+  mutate(term = str_replace(term, "borough", "Borough:")) |>
+  knitr::kable(digits = 3) 
+```
+
