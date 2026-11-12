@@ -21364,4 +21364,45 @@ nyc_airbnb |>
 ```
 
 ![](01_Linear_Models_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
-\##
+\## Logistic Regression
+
+``` r
+baltimore_df = 
+  read_csv("Data/homicide-data.csv") |>
+  filter(city == "Baltimore") |>
+  mutate(
+    resolved = as.numeric(disposition == "Closed by arrest"), 
+    victim_age = as.numeric(victim_age)
+  ) 
+```
+
+    ## Rows: 52179 Columns: 12
+    ## ── Column specification ────────────────────────────────────────────────────────
+    ## Delimiter: ","
+    ## chr (9): uid, victim_last, victim_first, victim_race, victim_age, victim_sex...
+    ## dbl (3): reported_date, lat, lon
+    ## 
+    ## ℹ Use `spec()` to retrieve the full column specification for this data.
+    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+
+fit the logistic regression
+
+``` r
+fit_logistic =
+  baltimore_df |>
+  mutate(victim_race = fct_infreq(victim_race)) |>
+  glm(resolved ~ victim_age + victim_race, data = _, family = binomial())
+
+fit_logistic |>
+  broom::tidy() |>
+  knitr::kable(digits = 3)
+```
+
+| term                | estimate | std.error | statistic | p.value |
+|:--------------------|---------:|----------:|----------:|--------:|
+| (Intercept)         |   -0.491 |     0.106 |    -4.652 |   0.000 |
+| victim_age          |   -0.006 |     0.003 |    -1.886 |   0.059 |
+| victim_raceWhite    |    1.026 |     0.170 |     6.050 |   0.000 |
+| victim_raceHispanic |    0.577 |     0.269 |     2.145 |   0.032 |
+| victim_raceAsian    |    1.269 |     0.629 |     2.016 |   0.044 |
+| victim_raceOther    |   -0.002 |     0.868 |    -0.003 |   0.998 |

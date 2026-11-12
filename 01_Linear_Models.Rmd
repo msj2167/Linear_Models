@@ -193,4 +193,28 @@ nyc_airbnb |>
   geom_point() + 
   theme(axis.text.x = element_text(angle = 80, hjust =1))
 ```
-## 
+## Logistic Regression 
+
+```{r}
+baltimore_df = 
+  read_csv("Data/homicide-data.csv") |>
+  filter(city == "Baltimore") |>
+  mutate(
+    resolved = as.numeric(disposition == "Closed by arrest"), 
+    victim_age = as.numeric(victim_age)
+  ) 
+```
+fit the logistic regression 
+
+```{r}
+fit_logistic =
+  baltimore_df |>
+  mutate(victim_race = fct_infreq(victim_race)) |>
+  glm(resolved ~ victim_age + victim_race, data = _, family = binomial())
+
+fit_logistic |>
+  broom::tidy() |>
+  knitr::kable(digits = 3)
+  
+```
+
